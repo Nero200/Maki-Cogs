@@ -5,24 +5,29 @@ A collection of custom cogs for Red-Bot Discord bots, developed for enhanced fun
 ## Cogs
 
 ### ChimeraDice
-An advanced dice rolling cog with luck and karma mechanics.
-- **Features**: Statistical tracking, karma system, luck mechanics
+An advanced dice rolling cog with luck and karma mechanics for tabletop RPG games.
+- **Features**: Statistical tracking, karma system, luck mechanics, comprehensive dice notation support
 - **Requirements**: `d20` library
 - **Commands**: Use `[p]help dice` for available commands
+- **Tags**: dice, fun, games, rpg, ttrpg
 
 ### Custodian
-Tracks thinspace breaches, gates, dreams, and weekly cycles for game management.
-- **Features**: Resource tracking, weekly resets, breach management
+Tracks thinspace breaches, gates, dreams, and weekly cycles for game management systems.
+- **Features**: Resource tracking, weekly resets, breach management, cycle automation
 - **Commands**: Use `[p]help Custodian` for available commands
-
-### CustodianRE
-Enhanced version of the Custodian cog with additional features.
+- **Tags**: tracking, utility, game, resource management
 
 ### MsgPrune
-Message pruning utility for server management.
+Advanced message pruning utility for Discord server management.
+- **Features**: Bulk message deletion with filtering options
+- **Commands**: Use `[p]help msgprune` for available commands
+- **Tags**: moderation, utility, cleanup
 
 ### PerfectTTT
-Tic-tac-toe game implementation.
+Interactive tic-tac-toe game implementation for Discord.
+- **Features**: Player vs player tic-tac-toe matches
+- **Commands**: Use `[p]help perfectttt` for available commands
+- **Tags**: games, fun, interactive
 
 ## Installation
 
