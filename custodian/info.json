@@ -1,0 +1,11 @@
+{
+    "author": ["Exploit"],
+    "install_msg": "Custodian cog installed. Track thinspace breaches and manage weekly cycles. Use `[p]help Custodian` for commands.",
+    "name": "Custodian",
+    "short": "Tracks thinspace breaches, gates, dreams, and weekly cycles.",
+    "description": "Provides commands to manage and track the usage of thinspaces (connections like AA-BB), apply breachgates, track dream usage, and manage weekly resets based on the provided design.",
+    "tags": ["tracking", "utility", "game", "resource management"],
+    "requirements": [], // Add any external libraries if needed later
+    "min_bot_version": "3.5.0", // Or your target Red version
+    "end_user_data_statement": "This cog stores configuration data per server, including defined thinspaces, breach counts, gate status, dream counts, and cycle information."
+}

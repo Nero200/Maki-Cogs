@@ -1,0 +1,13 @@
+{
+    "name": "MsgPrune",
+    "short": "Delete bot messages in DMs with reactions",
+    "description": "Allows users to delete bot messages in DMs by reacting with ❌",
+    "tags": [
+        "utility",
+        "moderation",
+        "dm"
+    ],
+    "requirements": [],
+    "hidden": false,
+    "end_user_data_statement": "This cog does not persistently store data or metadata about users."
+}

@@ -1,0 +1,11 @@
+{
+    "author": ["Exploit", "Claude"],
+    "install_msg": "Custodian Refactored cog installed. This is an improved version of the original Custodian cog with better performance, security, and maintainability. Use `[p]help CustodianRefactored` for commands.",
+    "name": "CustodianRefactored",
+    "short": "Refactored version: Tracks thinspace breaches, gates, dreams, trios, artifacts, and weekly cycles.",
+    "description": "Enhanced version of the Custodian cog with improved architecture. Provides commands to manage and track thinspaces (connections like AA-BB), apply breachgates, track dream usage, manage trio manifestations, handle weekly artifacts, and manage automated weekly resets. Features include caching for performance, comprehensive input validation, better error handling, and a complete data migration system from the original cog.",
+    "tags": ["tracking", "utility", "game", "resource management", "refactored", "enhanced"],
+    "requirements": [],
+    "min_bot_version": "3.5.0",
+    "end_user_data_statement": "This cog stores configuration data per server, including defined thinspaces, breach counts, gate status, dream counts, trio inventory with holder information, weekly artifacts with usage tracking, user titles and locks, and cycle information. All data is stored locally in the bot's configuration system."
+}
