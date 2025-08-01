@@ -9,25 +9,27 @@ An advanced dice rolling cog with luck and karma mechanics for tabletop RPG game
 - **Features**: Statistical tracking, karma system, luck mechanics, comprehensive dice notation support
 - **Requirements**: `d20` library
 - **Commands**: Use `[p]help dice` for available commands
-- **Tags**: dice, fun, games, rpg, ttrpg
+- **Tags**: dice, fun, games, rpg, ttrpg, roll
 
 ### Custodian
-Tracks thinspace breaches, gates, dreams, and weekly cycles for game management systems.
+Designed for a PbP game to helps with resource and transversal mechanic tracking. 
+Depreciated due to end of game.
+Tracks thinspace breaches, gates, dreams, powers, and weekly cycles for game management systems.
 - **Features**: Resource tracking, weekly resets, breach management, cycle automation
 - **Commands**: Use `[p]help Custodian` for available commands
 - **Tags**: tracking, utility, game, resource management
 
 ### MsgPrune
-Advanced message pruning utility for Discord server management.
+Advanced message pruning utility for Discord Bot DMs
 - **Features**: Bulk message deletion with filtering options
 - **Commands**: Use `[p]help msgprune` for available commands
 - **Tags**: moderation, utility, cleanup
 
 ### PerfectTTT
-Interactive tic-tac-toe game implementation for Discord.
+Interactive tic-tac-toe game implementation for Discord with perfect play.
 - **Features**: Player vs player tic-tac-toe matches
 - **Commands**: Use `[p]help perfectttt` for available commands
-- **Tags**: games, fun, interactive
+- **Tags**: games, fun, interactive, trickery
 
 ## Installation
 
@@ -35,7 +37,7 @@ To install these cogs on your Red-Bot instance:
 
 1. Add this repository to your bot:
    ```
-   [p]repo add maki-cogs <repository_url>
+   [p]repo add maki-cogs https://github.com/Nero200/Maki-Cogs  
    ```
 
 2. Install the desired cog:
