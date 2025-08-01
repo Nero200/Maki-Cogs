@@ -30,6 +30,14 @@ Interactive tic-tac-toe game implementation for Discord with perfect play.
 - **Commands**: Use `[p]help perfectttt` for available commands
 - **Tags**: games, fun, interactive, trickery
 
+### WordCloudRe
+Refactored word cloud generator that creates visual word clouds from Discord channel message history.
+- **Features**: Custom masks, color themes, word filtering, time-based analysis, file upload/download validation
+- **Requirements**: `wordcloud`, `numpy`, `matplotlib` (system dependencies: `libstdc++.so.6`, `libz.so.1`)
+- **Commands**: Use `[p]help wordcloud` for available commands
+- **Tags**: word, cloud, wordcloud, refactored, visualization, analytics
+- **Note**: Refactored version of original cog by FlapJack and aikaterna with bug fixes and security improvements
+
 ## Installation
 
 To install these cogs on your Red-Bot instance:
