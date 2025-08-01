@@ -1,0 +1,11 @@
+{
+    "author": ["Nero", "Claude"],
+    "install_msg": "Perfect TicTacToe cog installed. Play tic-tac-toe against an unbeatable AI. Use `[p]help PerfectTTT` for commands.",
+    "name": "PerfectTTT",
+    "short": "Play tic-tac-toe against an unbeatable AI",
+    "description": "A tic-tac-toe game where the AI uses the minimax algorithm to play perfectly. The AI will never lose and will win whenever possible.",
+    "tags": ["game", "tictactoe", "minmax", "fun"],
+    "requirements": [],
+    "min_bot_version": "3.5.0",
+    "end_user_data_statement": "This cog stores temporary game state information in memory while a game is in progress. All data is cleared when the game ends."
+}
