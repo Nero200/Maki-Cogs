@@ -11,7 +11,7 @@ An advanced dice rolling cog with luck and karma mechanics for tabletop RPG game
 - **Commands**: Use `[p]help dice` for available commands
 - **Tags**: dice, fun, games, rpg, ttrpg, roll
 
-### Custodian ⚠️ **DEPRECATED**
+### Custodian **DEPRECATED**
 Designed for a PbP game to help with resource and traversal mechanic tracking. 
 **Note**: This cog is deprecated due to end of game and is no longer maintained.
 - **Features**: Resource tracking, weekly resets, breach management, cycle automation
