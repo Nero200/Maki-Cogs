@@ -38,6 +38,22 @@ Refactored word cloud generator that creates visual word clouds from Discord cha
 - **Tags**: word, cloud, wordcloud, refactored, visualization, analytics
 - **Note**: Refactored version of original cog by FlapJack and aikaterna with bug fixes and security improvements
 
+### MakiAlert
+Simple HTTP-based alert system that sends notifications to Discord DMs.
+- **Features**: HTTP endpoint for external services, auto-start server, rate limiting, audio cog integration
+- **Requirements**: No additional dependencies
+- **Commands**: Use `[p]help makialert` for available commands
+- **Tags**: alerts, monitoring, http, notifications, system
+- **Endpoint**: `POST http://localhost:8080/alert` (localhost only, no auth required)
+
+### VoiceCommands
+Voice control system for Discord audio playback using speech recognition and wake word detection.
+- **Features**: Wake word detection ("Hey Maki"), offline processing, audio cog integration
+- **Requirements**: `py-cord`, `SpeechRecognition`, `openwakeword`, `numpy`, `librosa`
+- **Commands**: Use `[p]help voicecommands` for available commands
+- **Tags**: voice, audio, speech recognition, wake word, control
+- **Note**: Requires py-cord instead of standard discord.py for voice recording capabilities
+
 ## Installation
 
 To install these cogs on your Red-Bot instance:
