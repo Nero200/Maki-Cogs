@@ -1,0 +1,11 @@
+{
+    "author": ["Nero", "Claude"],
+    "install_msg": "VoiceCommands cog installed. Use voice commands like 'Hey Maki, pause' to control audio playback. Requires py-cord and speech recognition libraries.",
+    "name": "VoiceCommands",
+    "short": "Voice control for Discord audio playback using speech recognition",
+    "description": "Provides voice command functionality for controlling Discord audio playback. Supports wake word detection ('Hey Maki') followed by simple commands like pause, resume, stop, and disconnect. Uses offline speech recognition for privacy and reliability.",
+    "tags": ["voice", "audio", "speech", "recognition", "control"],
+    "requirements": ["py-cord>=2.6.0", "SpeechRecognition>=3.10.0", "openwakeword>=0.6.0", "numpy", "librosa"],
+    "min_bot_version": "3.5.0",
+    "end_user_data_statement": "This cog processes voice audio temporarily for speech recognition. Audio is not stored or transmitted externally. All processing is done locally on the server."
+}
