@@ -248,6 +248,10 @@ class ChimeraDice(commands.Cog):
             "No cheating! 🎲",
             "The dice gods frown upon this.",
             "Try harder. Or don't.",
+            "Dad says no.",
+            "I'm telling dad!",
+            "Nada.",
+            "Take -2 to your next roll.",
         ]
         await ctx.send(random.choice(responses))
 
@@ -265,6 +269,10 @@ class ChimeraDice(commands.Cog):
             "No cheating! 🎲",
             "The dice gods frown upon this.",
             "Try harder. Or don't.",
+            "Dad says no.",
+            "I'm telling dad!",
+            "Nada.",
+            "Take -2 to your next roll.",
         ]
         await ctx.send(random.choice(responses))
 
@@ -282,6 +290,10 @@ class ChimeraDice(commands.Cog):
             "No cheating! 🎲",
             "The dice gods frown upon this.",
             "Try harder. Or don't.",
+            "Dad says no.",
+            "I'm telling dad!",
+            "Nada.",
+            "Take -2 to your next roll.",
         ]
         await ctx.send(random.choice(responses))
 
@@ -306,6 +318,10 @@ class ChimeraDice(commands.Cog):
             "No cheating! 🎲",
             "The dice gods frown upon this.",
             "Try harder. Or don't.",
+            "Dad says no.",
+            "I'm telling dad!",
+            "Nada.",
+            "Take -2 to your next roll.",
         ]
         await ctx.send(random.choice(responses))
 
