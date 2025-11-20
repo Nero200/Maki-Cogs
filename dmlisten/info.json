@@ -1,0 +1,11 @@
+{
+    "author": ["Nero"],
+    "install_msg": "DMListen cog installed. All DMs sent to the bot will be logged and forwarded to the owner. Reply to forwarded messages to respond to the original sender.",
+    "name": "DMListen",
+    "short": "Logs and forwards DMs with reply capability",
+    "description": "Logs all DMs sent to the bot to a text file and forwards them to the owner. The owner can reply to forwarded messages using Discord's reply feature, and the bot will send the reply back to the original sender. Includes detailed logging with timestamps, user info, attachments, and embeds.",
+    "tags": ["dm", "logging", "forwarding", "modmail", "utility"],
+    "requirements": [],
+    "min_bot_version": "3.5.0",
+    "end_user_data_statement": "This cog stores DM message content, user IDs, timestamps, and message mappings in log files and memory. This data is used for forwarding and reply functionality."
+}

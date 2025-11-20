@@ -24,6 +24,14 @@ Advanced message pruning utility for Discord Bot DMs
 - **Commands**: Use `[p]help msgprune` for available commands
 - **Tags**: moderation, utility, cleanup
 
+### DMListen
+DM logging and forwarding system with bidirectional reply capability.
+- **Features**: Automatic DM logging to text file, forwards all DMs to owner, reply to forwarded messages to respond to sender, detailed logging with timestamps/user info/attachments/embeds
+- **Requirements**: No additional dependencies
+- **Commands**: Use `[p]help dmlisten` for available commands
+- **Tags**: dm, logging, forwarding, modmail, utility
+- **Note**: Reply to forwarded DM messages using Discord's reply feature to send responses back to the original sender
+
 ### PerfectTTT
 Interactive tic-tac-toe game implementation for Discord with perfect play.
 - **Features**: Player vs player tic-tac-toe matches
