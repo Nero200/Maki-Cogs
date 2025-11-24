@@ -1,0 +1,11 @@
+# Local test utilities - not for public repo
+chimeradice_test.py
+CLAUDE.md
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Test outputs
+test_output/
