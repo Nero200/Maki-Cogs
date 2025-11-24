@@ -10,3 +10,7 @@ __pycache__/
 dist/
 build/
 storage/
+
+# Internal documentation - not for public repo
+CLAUDE.md
+**/CLAUDE.md
