@@ -1,0 +1,16 @@
+{
+    "author": ["Nero"],
+    "install_msg": "ChimeraDice installed. Please use [p]help dice for commands.",
+    "name": "ChimeraDice",
+    "short": "An advanced dice roller with luck and karma mechanics.",
+    "description": "A dice roller with systems for luck, karma, and detailed statistical tracking of a user's roll history.",
+    "tags": [
+        "dice",
+        "fun",
+        "games",
+        "rpg",
+        "ttrpg"
+    ],
+    "requirements": ["d20"],
+    "end_user_data_statement": "This cog stores user IDs and their roll history to provide statistics and power its core mechanics. All data is stored on a per-server basis."
+}
