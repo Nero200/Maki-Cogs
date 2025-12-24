@@ -4,6 +4,13 @@ A collection of custom cogs for Red-Bot Discord bots, developed for enhanced fun
 
 ## Cogs
 
+### AvgFamil
+Custom XKCD 2501 (Average Familiarity) image generator.
+- **Features**: Custom text input, automatic text wrapping, uppercase conversion, dynamic height adjustment, speech line positioning
+- **Requirements**: `Pillow` library
+- **Commands**: Use `[p]help avgfamil` for available commands
+- **Tags**: xkcd, meme, image, generator, fun
+
 ### ChimeraDice
 An advanced dice rolling cog with luck and karma mechanics for tabletop RPG games.
 - **Features**: Statistical tracking, karma system, luck mechanics, comprehensive dice notation support
