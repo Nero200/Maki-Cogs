@@ -184,11 +184,12 @@ class AvgFamil(commands.Cog):
 
         return output
 
-    @commands.command(name="avgfamil")
+    @commands.command(name="avgfamil", aliases=["xkcd2501"])
     async def avgfamil_command(self, ctx, text1: str, text2: str):
         """Generate a custom XKCD 2501 (Average Familiarity) image.
 
         Usage: >avgfamil "first text" "second text"
+        Alias: >xkcd2501 "first text" "second text"
 
         The command will create an image with your custom text while preserving
         the "of course" portion of the original comic.
