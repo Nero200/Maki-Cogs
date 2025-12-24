@@ -68,6 +68,23 @@ class AvgFamil(commands.Cog):
 
         return total_height - line_spacing  # Remove last spacing
 
+    def normalize_quotes(self, text: str) -> str:
+        """Normalize quotation mark characters to ASCII equivalents."""
+        # Replace curly/smart double quotes with straight quotes
+        # Note: We only replace double quotes to avoid interfering with contractions
+        replacements = {
+            '\u201C': '"',  # Left double quotation mark
+            '\u201D': '"',  # Right double quotation mark
+            '\u201E': '"',  # Double low-9 quotation mark
+            '\u201F': '"',  # Double high-reversed-9 quotation mark
+            '\u2033': '"',  # Double prime
+        }
+
+        for old, new in replacements.items():
+            text = text.replace(old, new)
+
+        return text
+
     def draw_speech_line(self, draw: ImageDraw.ImageDraw, start: Tuple[int, int], end: Tuple[int, int]):
         """Draw a 3-pixel thick speech line (grey-black-grey)."""
         # Draw outer grey lines (1px each on the sides)
@@ -83,6 +100,10 @@ class AvgFamil(commands.Cog):
 
         # Create font at fixed size
         font = ImageFont.truetype(self.font_path, self.font_size)
+
+        # Normalize quotes and apostrophes
+        text1 = self.normalize_quotes(text1)
+        text2 = self.normalize_quotes(text2)
 
         # Convert text to uppercase (XKCD style)
         text1 = text1.upper()
