@@ -1,0 +1,4 @@
+test_output.png
+test_long_output.png
+__pycache__/
+*.pyc
