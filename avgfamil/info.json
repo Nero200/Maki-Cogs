@@ -1,0 +1,11 @@
+{
+    "author": ["Nero"],
+    "install_msg": "AvgFamil cog installed. Use >avgfamil to generate custom XKCD 2501 (Average Familiarity) images.",
+    "name": "AvgFamil",
+    "short": "Generate custom XKCD 2501 images",
+    "description": "Creates custom versions of XKCD 2501 (Average Familiarity) with user-provided text. Automatically wraps and scales text to fit, with dynamic height adjustment for longer text.",
+    "tags": ["xkcd", "meme", "image", "generator", "fun"],
+    "requirements": ["Pillow"],
+    "min_bot_version": "3.5.0",
+    "end_user_data_statement": "This cog does not store any user data."
+}
