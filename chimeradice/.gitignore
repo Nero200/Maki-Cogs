@@ -15,3 +15,10 @@ test_output/
 
 # Hypothesis cache
 .hypothesis/
+
+# Direnv
+.direnv/
+
+# uv
+.venv/
+uv.lock
