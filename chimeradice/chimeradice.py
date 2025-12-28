@@ -8,75 +8,38 @@ from datetime import datetime, timedelta
 from redbot.core import commands, Config
 from typing import List, Dict, Tuple, Optional
 
+# Import pure functions from core module
+from .chimeradice_core import (
+    # Constants
+    DEFAULT_GUILD_USER,
+    DEFAULT_GUILD,
+    FALLOUT_FACES,
+    FUDGE_FACES,
+    FUDGE_PROBABILITIES,
+    # Result classes
+    DiceRollResult,
+    SimpleRollResult,
+    # Percentile functions
+    single_die_percentile,
+    multiple_dice_percentile,
+    calculate_fudge_percentile,
+    estimate_keep_percentile,
+    calculate_roll_percentile,
+    # Parsing/validation functions
+    parse_dice_modifiers,
+    validate_dice_expression,
+    normalize_dice_key,
+    parse_roll_and_label,
+    translate_dice_syntax,
+    extract_base_dice,
+    # Weighted rolling functions
+    roll_weighted_standard_die,
+    roll_weighted_fudge_dice,
+    generate_fudge_dice_for_sum,
+    generate_realistic_fudge_faces,
+)
+
 log = logging.getLogger("red.chimeradice")
-
-# --- DEFAULT DICTIONARIES ---
-DEFAULT_GUILD_USER = {
-    "toggles": {
-        "luckmode_on": False,
-        "karmamode_on": False,
-    },
-    "set_luck": 50,
-    "current_karma": 0,  # Legacy - kept for backward compatibility
-    "percentile_debt": 0.0,  # New karma system - accumulated difference from 50th percentile
-    "stats": {
-        "server_wide": {
-            "standard_rolls": [],
-            "luck_rolls": [],
-            "karma_rolls": [],
-            "natural_luck": 50.0,  # Start at 50th percentile
-            "percentile_history": [],
-            "total_rolls": 0,
-        },
-        "campaigns": {},
-    },
-}
-
-DEFAULT_GUILD = {
-    "campaigns": {},
-    "users": {},
-}
-
-# Fallout damage dice faces
-FALLOUT_FACES = ["1", "2", "0", "0", "1E", "1E"]
-
-# Fudge dice faces
-FUDGE_FACES = [-1, 0, 1]
-
-# Precomputed fudge dice sum probabilities for 1-6 dice
-FUDGE_PROBABILITIES = {
-    1: {-1: 1/3, 0: 1/3, 1: 1/3},
-    2: {-2: 1/9, -1: 2/9, 0: 3/9, 1: 2/9, 2: 1/9},
-    3: {-3: 1/27, -2: 3/27, -1: 6/27, 0: 7/27, 1: 6/27, 2: 3/27, 3: 1/27},
-    4: {-4: 1/81, -3: 4/81, -2: 10/81, -1: 16/81, 0: 19/81, 1: 16/81, 2: 10/81, 3: 4/81, 4: 1/81},
-    5: {-5: 1/243, -4: 5/243, -3: 15/243, -2: 30/243, -1: 45/243, 0: 51/243, 1: 45/243, 2: 30/243, 3: 15/243, 4: 5/243, 5: 1/243},
-    6: {-6: 1/729, -5: 6/729, -4: 21/729, -3: 50/729, -2: 90/729, -1: 126/729, 0: 141/729, 1: 126/729, 2: 90/729, 3: 50/729, 4: 21/729, 5: 6/729, 6: 1/729}
-}
-
-
-# Mock result classes for weighted dice rolls that mimic d20.roll() output
-class DiceRollResult:
-    """Mock result object for weighted dice rolls with individual dice display."""
-    def __init__(self, total: int, dice_results: List[int], modifier: int):
-        self.total = total
-        dice_str = ', '.join(map(str, dice_results))
-        if len(dice_results) > 1:
-            dice_display = f"({dice_str})"
-        else:
-            dice_display = str(dice_results[0])
-
-        if modifier != 0:
-            modifier_str = f" {modifier:+d}" if modifier < 0 else f" +{modifier}"
-            self.result = f"{dice_display}{modifier_str} = {total}"
-        else:
-            self.result = f"{dice_display} = {total}"
-
-
-class SimpleRollResult:
-    """Mock result object for queued rolls with pre-formatted result string."""
-    def __init__(self, total: int, result_str: str):
-        self.total = total
-        self.result = result_str
 
 
 class ChimeraDice(commands.Cog):
@@ -140,10 +103,10 @@ class ChimeraDice(commands.Cog):
         """Execute a roll with the specified type (standard, luck, karma)."""
         try:
             # Parse dice expression and optional label
-            dice_expr, label = self._parse_roll_and_label(roll_string)
+            dice_expr, label = parse_roll_and_label(roll_string)
 
             # Validate dice expression first (only the dice part, not the label)
-            is_valid, error_msg = self._validate_dice_expression(dice_expr)
+            is_valid, error_msg = self._validate_dice_expression_with_d20(dice_expr)
             if not is_valid:
                 await ctx.send(f"Invalid dice expression: {error_msg}")
                 return
@@ -156,7 +119,7 @@ class ChimeraDice(commands.Cog):
                 self._cleanup_expired_test_queue()
 
                 # Normalize the dice expression for consistent lookup
-                normalized_key = self._normalize_dice_key(dice_expr)
+                normalized_key = normalize_dice_key(dice_expr)
 
                 if normalized_key in self.test_queue[user_id]:
                     data = self.test_queue[user_id][normalized_key]
@@ -198,7 +161,7 @@ class ChimeraDice(commands.Cog):
                     result = await self._roll_standard_dice_with_luck(ctx, dice_expr)
                 else:
                     # Translate user-friendly syntax to d20 library syntax
-                    translated_expression = self._translate_dice_syntax(dice_expr)
+                    translated_expression = translate_dice_syntax(dice_expr)
                     result = d20.roll(translated_expression)
             
             actual_total = result.total
@@ -460,7 +423,7 @@ class ChimeraDice(commands.Cog):
         """Update user's percentile debt based on roll outcome."""
         # Calculate the percentile for the original roll result
         roll_string = ctx.message.content.split(maxsplit=1)[1] if len(ctx.message.content.split()) > 1 else "1d20"
-        percentile = self._calculate_roll_percentile(roll_string, original_result)
+        percentile = calculate_roll_percentile(roll_string, original_result)
         
         if percentile is not None:
             user_data = await self.config.user(ctx.author).all()
@@ -525,7 +488,7 @@ class ChimeraDice(commands.Cog):
             return
         
         # Calculate percentile for this roll
-        percentile = self._calculate_roll_percentile(roll_data["roll_string"], roll_data["result"])
+        percentile = calculate_roll_percentile(roll_data["roll_string"], roll_data["result"])
 
         if percentile is not None:
             log.debug(f"Percentile calculated: {roll_data['roll_string']} = {roll_data['result']} -> {percentile:.1f}%")
@@ -553,201 +516,7 @@ class ChimeraDice(commands.Cog):
                 fresh_user_data["stats"]["server_wide"]["percentile_history"] = current_percentiles
                 fresh_user_data["stats"]["server_wide"]["natural_luck"] = natural_luck
                 await self.config.user(user).set(fresh_user_data)
-    
-    def _calculate_roll_percentile(self, roll_string: str, result: int) -> float:
-        """Calculate percentile rank for a roll result."""
-        try:
-            # Handle special dice types
-            if 'df' in roll_string.lower():
-                return self._calculate_fudge_percentile(roll_string, result)
-            elif 'dd' in roll_string.lower():
-                log.debug(f"Skipping percentile for Fallout dice: {roll_string}")
-                return None  # Skip Fallout dice for now (complex distribution)
-            
-            # Check if this uses advanced d20 operations
-            import re
-            has_advanced = bool(re.search(r'(kh|kl|dh|dl|ro|rr|ra|e|mi|ma|p)\d*', roll_string.lower()))
-            
-            if has_advanced:
-                # For advanced operations, we'll use a simplified approach
-                # Extract the base dice and use broad estimates
-                base_dice = self._extract_base_dice(roll_string)
-                match = re.match(r'(\d+)d(\d+)', base_dice.lower())
-                if match:
-                    num_dice = int(match.group(1))
-                    die_size = int(match.group(2))
-                    
-                    # For operations like kh3 on 4d6, estimate based on modified range
-                    if 'kh' in roll_string.lower() or 'kl' in roll_string.lower():
-                        # Keep operations - approximate the new range
-                        return self._estimate_keep_percentile(roll_string, result, num_dice, die_size)
-                    else:
-                        # Other advanced operations - use basic calculation as fallback
-                        if num_dice == 1:
-                            return self._single_die_percentile(result, die_size)
-                        else:
-                            return self._multiple_dice_percentile(result, num_dice, die_size)
-            
-            # Simple regex parsing for standard dice (more reliable than d20 library parsing)
-            # Match patterns like: 1d20, 3d6, 5d20+2, 2d10-1
-            match = re.match(r'(\d+)d(\d+)(?:[+-]\d+)?', roll_string.lower())
-            
-            if match:
-                num_dice = int(match.group(1))
-                die_size = int(match.group(2))
-                
-                # Calculate percentile for single die
-                if num_dice == 1:
-                    return self._single_die_percentile(result, die_size)
-                # Calculate percentile for multiple dice (sum)
-                elif num_dice > 1:
-                    return self._multiple_dice_percentile(result, num_dice, die_size)
-            
-            return None
 
-        except Exception as e:
-            log.debug(f"Percentile calculation failed for roll_string='{roll_string}', result={result}: {e}")
-            return None
-    
-    def _single_die_percentile(self, result: int, die_size: int) -> float:
-        """Calculate percentile for a single die roll."""
-        if result < 1 or result > die_size:
-            return None
-        
-        # For a single die, percentile is (result - 0.5) / die_size * 100
-        # Subtract 0.5 to get midpoint of the result's range
-        return ((result - 0.5) / die_size) * 100
-    
-    def _multiple_dice_percentile(self, result: int, num_dice: int, die_size: int) -> float:
-        """Calculate percentile for multiple dice of same type."""
-        min_result = num_dice
-        max_result = num_dice * die_size
-        
-        if result < min_result or result > max_result:
-            return None
-        
-        # For multiple dice, approximate using normal distribution
-        # This is an approximation - true calculation would require probability tables
-        mean = num_dice * (die_size + 1) / 2
-        
-        # Rough approximation of percentile
-        if result <= mean:
-            # Below average
-            percentile = ((result - min_result) / (mean - min_result)) * 50
-        else:
-            # Above average  
-            percentile = 50 + ((result - mean) / (max_result - mean)) * 50
-        
-        return max(0, min(100, percentile))
-    
-    def _calculate_fudge_percentile(self, roll_string: str, result: int) -> float:
-        """Calculate percentile for fudge dice results."""
-        # Extract number of dice from roll string
-        match = re.match(r'(\d+)df?', roll_string.lower().split('+')[0].split('-')[0])
-        if not match:
-            return None
-        
-        num_dice = int(match.group(1))
-        min_result = -num_dice
-        max_result = num_dice
-        
-        if result < min_result or result > max_result:
-            return None
-        
-        # Fudge dice follow a triangular/binomial distribution
-        # For 4dF: -4(1.2%), -3(4.9%), -2(12.3%), -1(19.8%), 0(23.5%), +1(19.8%), +2(12.3%), +3(4.9%), +4(1.2%)
-        # Approximate percentile calculation
-        range_size = max_result - min_result
-        position = (result - min_result) / range_size
-        
-        # Adjust for bell curve distribution (fudge dice are more likely to be near 0)
-        if result == 0:
-            percentile = 50  # Exactly at median
-        elif result > 0:
-            # Positive results
-            percentile = 50 + (position - 0.5) * 100 * 0.8  # Slightly compressed
-        else:
-            # Negative results
-            percentile = position * 100 * 0.8  # Slightly compressed
-        
-        return max(0, min(100, percentile))
-    
-    def _estimate_keep_percentile(self, roll_string: str, result: int, num_dice: int, die_size: int) -> float:
-        """Estimate percentile for keep highest/lowest operations."""
-        import re
-
-        # Extract keep/drop parameters (numbers are optional, default to 1)
-        kh_match = re.search(r'kh(\d*)', roll_string.lower())
-        kl_match = re.search(r'kl(\d*)', roll_string.lower())
-        dh_match = re.search(r'dh(\d*)', roll_string.lower())
-        dl_match = re.search(r'dl(\d*)', roll_string.lower())
-        
-        if kh_match:
-            # Keep highest X dice (default to 1 if not specified)
-            keep_count = int(kh_match.group(1)) if kh_match.group(1) else 1
-            # For keep highest, the range is from keep_count to keep_count * die_size
-            min_result = keep_count
-            max_result = keep_count * die_size
-
-            # Approximate percentile (keep highest skews toward higher values)
-            if result < min_result or result > max_result:
-                return None
-
-            # Keep highest operations have higher probability for higher results
-            range_position = (result - min_result) / (max_result - min_result)
-            # Apply a power curve to account for the bias toward higher values
-            percentile = (range_position ** 0.7) * 100
-
-        elif kl_match:
-            # Keep lowest X dice (default to 1 if not specified)
-            keep_count = int(kl_match.group(1)) if kl_match.group(1) else 1
-            min_result = keep_count
-            max_result = keep_count * die_size
-
-            if result < min_result or result > max_result:
-                return None
-
-            # Keep lowest operations have higher probability for lower results
-            range_position = (result - min_result) / (max_result - min_result)
-            # Apply an inverse power curve to account for the bias toward lower values
-            percentile = (range_position ** 1.4) * 100
-
-        elif dh_match:
-            # Drop highest X dice (default to 1 if not specified)
-            # Equivalent to keep lowest Y where Y = num_dice - X
-            drop_count = int(dh_match.group(1)) if dh_match.group(1) else 1
-            keep_count = num_dice - drop_count
-            min_result = keep_count
-            max_result = keep_count * die_size
-
-            if result < min_result or result > max_result:
-                return None
-
-            # Drop highest = keep lowest, so bias toward lower results
-            range_position = (result - min_result) / (max_result - min_result)
-            percentile = (range_position ** 1.4) * 100
-
-        elif dl_match:
-            # Drop lowest X dice (default to 1 if not specified)
-            # Equivalent to keep highest Y where Y = num_dice - X
-            drop_count = int(dl_match.group(1)) if dl_match.group(1) else 1
-            keep_count = num_dice - drop_count
-            min_result = keep_count
-            max_result = keep_count * die_size
-
-            if result < min_result or result > max_result:
-                return None
-
-            # Drop lowest = keep highest, so bias toward higher results
-            range_position = (result - min_result) / (max_result - min_result)
-            percentile = (range_position ** 0.7) * 100
-            
-        else:
-            # Fallback for other operations
-            return self._multiple_dice_percentile(result, num_dice, die_size)
-        
-        return max(0, min(100, percentile))
-    
     def _cleanup_expired_test_queue(self):
         """Remove queued test rolls older than 12 hours."""
         current_time = datetime.now()
@@ -783,109 +552,25 @@ class ChimeraDice(commands.Cog):
         if expired_count > 0:
             log.debug(f"Cleaned up {expired_count} expired queued roll(s)")
 
-    def _estimate_complex_percentile(self, roll_string: str, result: int) -> float:
-        """Estimate percentile for complex expressions."""
-        # This is a fallback for complex expressions we can't parse easily
-        # For now, return None to skip tracking these rolls
-        return None
-    
-    def _parse_dice_modifiers(self, expression: str) -> tuple:
-        """Parse dice expression with multiple modifiers.
-        
-        Examples:
-        - "4df+5+2-1" -> ("4df", 6)
-        - "1d20+3-2+1" -> ("1d20", 2)
-        - "4df" -> ("4df", 0)
-        """
-        import re
-        
-        # Find the dice part (everything before first + or -)
-        dice_match = re.match(r'([^+-]+)', expression)
-        if not dice_match:
-            return expression, 0
-            
-        dice_part = dice_match.group(1)
-        modifier_part = expression[len(dice_part):]
-        
-        if not modifier_part:
-            return dice_part, 0
-        
-        # Parse all modifiers using regex
-        # This finds patterns like +5, -3, +2, etc.
-        modifier_matches = re.findall(r'([+-])(\d+)', modifier_part)
-        
-        total_modifier = 0
-        for sign, value in modifier_matches:
-            if sign == '+':
-                total_modifier += int(value)
-            else:  # sign == '-'
-                total_modifier -= int(value)
-        
-        return dice_part, total_modifier
-    
-    def _validate_dice_expression(self, expression: str) -> tuple:
-        """Validate dice expression for safety and sanity.
-        
+    def _validate_dice_expression_with_d20(self, expression: str) -> tuple:
+        """Validate dice expression including d20 library parsing.
+
+        This wraps the core validate_dice_expression and adds d20 validation.
         Returns (is_valid, error_message)
         """
-        if not expression or len(expression) > 150:  # Increased for advanced operations
-            return False, "Dice expression too long (max 150 characters)"
-        
-        # Check for basic safety limits
-        import re
-        
-        # Find all numbers in the expression (but exclude those in advanced operators)
-        # Remove advanced operation patterns first to avoid false positives
-        temp_expr = expression
-        for pattern in [r'[<>]\d+', r'(kh|kl|dh|dl|ro|rr|ra|e|mi|ma|p)\d*']:
-            temp_expr = re.sub(pattern, '', temp_expr, flags=re.IGNORECASE)
-        
-        numbers = re.findall(r'\d+', temp_expr)
-        
-        for num_str in numbers:
-            num = int(num_str)
-            
-            # Reasonable limits to prevent abuse
-            if num > 1000:
-                return False, f"Number too large: {num} (max 1000)"
-            if num < 0:
-                return False, f"Negative numbers not allowed: {num}"
-        
-        # Check for reasonable dice patterns
-        dice_patterns = re.findall(r'(\d+)d(\d+)', expression.lower())
-        for num_dice, die_size in dice_patterns:
-            num_dice, die_size = int(num_dice), int(die_size)
-            
-            if num_dice > 100:
-                return False, f"Too many dice: {num_dice} (max 100)"
-            if die_size > 1000:
-                return False, f"Die size too large: {die_size} (max 1000)"
-            if die_size < 1:
-                return False, f"Invalid die size: {die_size} (min 1)"
-        
-        # Check for fudge dice
-        fudge_patterns = re.findall(r'(\d+)df?', expression.lower())
-        for num_dice in fudge_patterns:
-            if int(num_dice) > 100:
-                return False, f"Too many fudge dice: {num_dice} (max 100)"
-        
-        # Check for fallout dice  
-        fallout_patterns = re.findall(r'(\d+)dd?', expression.lower())
-        for num_dice in fallout_patterns:
-            if int(num_dice) > 100:
-                return False, f"Too many fallout dice: {num_dice} (max 100)"
-        
-        # Validate d20 expression by attempting to parse it
-        # Skip validation for our custom dice types
+        # First do basic validation from core
+        is_valid, error_msg = validate_dice_expression(expression)
+        if not is_valid:
+            return is_valid, error_msg
+
+        # Then validate with d20 library for non-custom dice
         if not ('df' in expression.lower() or 'dd' in expression.lower()):
             try:
-                # Translate user-friendly syntax to d20 library syntax before testing
-                translated_expression = self._translate_dice_syntax(expression)
-                # Test if d20 can parse the translated expression
+                translated_expression = translate_dice_syntax(expression)
                 d20.roll(translated_expression)
             except Exception as e:
                 return False, f"Invalid d20 expression: {str(e)}"
-        
+
         return True, ""
 
     def _validate_queued_results(self, dice_expr: str, results: List[int]) -> tuple:
@@ -943,28 +628,6 @@ class ChimeraDice(commands.Cog):
         # If we can't parse it, allow it (validation already happened earlier)
         return True, ""
 
-    def _normalize_dice_key(self, dice_expr: str) -> str:
-        """Normalize a dice expression to a consistent lookup key.
-
-        Examples:
-        - "1D20" -> "1d20"
-        - "d20" -> "1d20" (adds implicit 1)
-        - "1d20+5" -> "1d20"
-        - "4DF" -> "4df"
-        - "dF" -> "1df" (adds implicit 1)
-        - "3dD" -> "3dd"
-        """
-        # Extract just the dice part (no modifiers)
-        dice_part, _ = self._parse_dice_modifiers(dice_expr)
-        # Lowercase everything for consistency
-        dice_part = dice_part.lower()
-
-        # Add implicit "1" if dice expression starts with "d"
-        if dice_part.startswith('d'):
-            dice_part = '1' + dice_part
-
-        return dice_part
-
     async def _handle_fudge_dice(self, ctx: commands.Context, roll_string: str, roll_type: str, queued_result: int = None, label: str = None):
         """Handle fudge dice rolling with outcome manipulation."""
         # Parse fudge dice (XdF+N or XdF-N format)
@@ -972,7 +635,7 @@ class ChimeraDice(commands.Cog):
         bonus = 0
 
         # Extract all modifiers (e.g., 4df+5+2-1)
-        dice_part, bonus = self._parse_dice_modifiers(roll_string)
+        dice_part, bonus = parse_dice_modifiers(roll_string)
         roll_string = dice_part
         
         match = re.match(r'(\d+)df?', roll_string.lower())
@@ -988,7 +651,7 @@ class ChimeraDice(commands.Cog):
         
         if queued_result is not None:
             # Set the dice result directly (before adding bonus)
-            dice_results = self._generate_fudge_dice_for_sum(num_dice, queued_result)
+            dice_results = generate_fudge_dice_for_sum(num_dice, queued_result)
             dice_total = sum(dice_results)
         elif roll_type == "standard":
             # For standard rolls, generate truly random fudge dice
@@ -1001,13 +664,13 @@ class ChimeraDice(commands.Cog):
             luck_debt = (luck_value - 50.0)
             
             # Use new weighted system for fudge dice
-            dice_results, dice_total = self._roll_weighted_fudge_dice(num_dice, luck_debt)
+            dice_results, dice_total = roll_weighted_fudge_dice(num_dice, luck_debt)
         elif roll_type == "karma":
             user_data = await self.config.user(ctx.author).all()
             percentile_debt = user_data.get("percentile_debt", 0.0)
             
             # Use new weighted system for fudge dice
-            dice_results, dice_total = self._roll_weighted_fudge_dice(num_dice, percentile_debt)
+            dice_results, dice_total = roll_weighted_fudge_dice(num_dice, percentile_debt)
         
         # Check for all positives or all negatives bonus
         all_positive = all(d == 1 for d in dice_results)
@@ -1044,30 +707,7 @@ class ChimeraDice(commands.Cog):
         
         await ctx.send(output)
         await self._record_roll(ctx, original_string, final_total, roll_type)
-    
-    def _generate_fudge_dice_for_sum(self, num_dice: int, target_sum: int) -> List[int]:
-        """Generate fudge dice that sum to approximately the target."""
-        # Clamp target to possible range
-        target_sum = max(-num_dice, min(num_dice, target_sum))
-        
-        # Start with all zeros
-        dice = [0] * num_dice
-        current_sum = 0
-        
-        # Adjust dice to reach target sum
-        remaining = target_sum - current_sum
-        for i in range(num_dice):
-            if remaining > 0:
-                dice[i] = 1
-                remaining -= 1
-            elif remaining < 0:
-                dice[i] = -1
-                remaining += 1
-        
-        # Randomize the order
-        random.shuffle(dice)
-        return dice
-    
+
     async def _handle_fallout_dice(self, ctx: commands.Context, roll_string: str, roll_type: str, queued_result: int = None, label: str = None):
         """Handle Fallout damage dice rolling."""
         # Parse fallout dice (XdD format)
@@ -1246,7 +886,7 @@ class ChimeraDice(commands.Cog):
         # Calculate recent luck using percentiles for meaningful comparison
         recent_percentiles = []
         for roll in recent_rolls:
-            percentile = self._calculate_roll_percentile(roll["roll_string"], roll["result"])
+            percentile = calculate_roll_percentile(roll["roll_string"], roll["result"])
             if percentile is not None:
                 recent_percentiles.append(percentile)
         
@@ -1346,121 +986,6 @@ class ChimeraDice(commands.Cog):
         
         await ctx.send(f"Roll history export for {user.display_name}:", file=file)
 
-    # --- WEIGHTED ROLLING FUNCTIONS ---
-    
-    def _roll_weighted_standard_die(self, die_size: int, debt: float) -> int:
-        """Roll a single standard die with karma/luck bias using weighted probabilities."""
-        if abs(debt) < 5.0:  # Activation threshold - no significant debt, roll normally
-            return random.randint(1, die_size)
-        
-        # Create weights for each face
-        weights = [1.0] * die_size
-        
-        # Calculate bias strength (0 to 1)
-        bias_strength = min(abs(debt) / 50.0, 1.0)
-        
-        # Apply bias to weights
-        midpoint = (die_size + 1) / 2
-        for i in range(die_size):
-            face_value = i + 1
-            
-            if debt > 0:  # Owed good luck - bias toward higher values
-                if face_value > midpoint:
-                    weights[i] *= (1.0 + bias_strength * 0.4)  # Boost good faces
-                else:
-                    weights[i] *= (1.0 - bias_strength * 0.2)  # Reduce bad faces
-            else:  # Owed bad luck - bias toward lower values
-                if face_value < midpoint:
-                    weights[i] *= (1.0 + bias_strength * 0.4)  # Boost bad faces
-                else:
-                    weights[i] *= (1.0 - bias_strength * 0.2)  # Reduce good faces
-        
-        # Roll using weighted probabilities
-        return random.choices(range(1, die_size + 1), weights=weights)[0]
-    
-    def _roll_weighted_fudge_dice(self, num_dice: int, debt: float) -> tuple:
-        """Roll fudge dice with karma/luck bias using weighted sum distribution."""
-        if abs(debt) < 5.0 or num_dice not in FUDGE_PROBABILITIES:
-            # Activation threshold - no significant debt or unsupported dice count, roll normally
-            dice_results = [random.choice(FUDGE_FACES) for _ in range(num_dice)]
-            return dice_results, sum(dice_results)
-        
-        # Get natural probabilities for this number of dice
-        natural_probs = FUDGE_PROBABILITIES[num_dice].copy()
-        
-        # Apply bias to probabilities
-        bias_strength = min(abs(debt) / 75.0, 0.8)  # Max 80% bias for fudge
-        
-        for sum_value in natural_probs:
-            if debt > 0:  # Owed good luck - bias toward positive sums
-                if sum_value > 0:
-                    natural_probs[sum_value] *= (1.0 + bias_strength * 0.5)
-                elif sum_value < 0:
-                    natural_probs[sum_value] *= (1.0 - bias_strength * 0.3)
-            else:  # Owed bad luck - bias toward negative sums
-                if sum_value < 0:
-                    natural_probs[sum_value] *= (1.0 + bias_strength * 0.5)
-                elif sum_value > 0:
-                    natural_probs[sum_value] *= (1.0 - bias_strength * 0.3)
-        
-        # Normalize probabilities
-        total_prob = sum(natural_probs.values())
-        for sum_value in natural_probs:
-            natural_probs[sum_value] /= total_prob
-        
-        # Roll weighted sum
-        sums = list(natural_probs.keys())
-        weights = list(natural_probs.values())
-        target_sum = random.choices(sums, weights=weights)[0]
-        
-        # Generate realistic-looking dice faces that sum to target
-        dice_results = self._generate_realistic_fudge_faces(num_dice, target_sum)
-        
-        return dice_results, target_sum
-    
-    def _generate_realistic_fudge_faces(self, num_dice: int, target_sum: int) -> list:
-        """Generate realistic fudge dice faces that sum to target while looking natural."""
-        # Clamp target to possible range
-        target_sum = max(-num_dice, min(num_dice, target_sum))
-        
-        # Start with all zeros
-        dice = [0] * num_dice
-        remaining = target_sum
-        
-        # First pass: distribute the sum efficiently
-        for i in range(num_dice):
-            if remaining > 0:
-                # Add positive faces, but don't exceed what we need
-                add_amount = min(1, remaining)
-                dice[i] = add_amount
-                remaining -= add_amount
-            elif remaining < 0:
-                # Add negative faces
-                subtract_amount = max(-1, remaining)
-                dice[i] = subtract_amount
-                remaining -= subtract_amount
-        
-        # Second pass: randomize the distribution while maintaining sum
-        # This makes the faces look more natural by spreading values around
-        for _ in range(num_dice * 2):  # Multiple randomization passes
-            # Pick two random dice
-            i, j = random.sample(range(num_dice), 2)
-            
-            # Try to transfer value from one to another (keeping sum constant)
-            if dice[i] > -1 and dice[j] < 1:  # Can transfer from i to j
-                if random.random() < 0.3:  # 30% chance to make this swap
-                    dice[i] -= 1
-                    dice[j] += 1
-            elif dice[i] < 1 and dice[j] > -1:  # Can transfer from j to i
-                if random.random() < 0.3:
-                    dice[i] += 1
-                    dice[j] -= 1
-        
-        # Final shuffle to randomize position
-        random.shuffle(dice)
-        
-        return dice
-    
     async def _roll_standard_dice_with_karma(self, ctx: commands.Context, roll_string: str):
         """Roll standard dice with karma bias applied."""
         import re
@@ -1485,7 +1010,7 @@ class ChimeraDice(commands.Cog):
                 # Roll each die with karma bias
                 dice_results = []
                 for _ in range(num_dice):
-                    die_result = self._roll_weighted_standard_die(die_size, debt)
+                    die_result = roll_weighted_standard_die(die_size, debt)
                     dice_results.append(die_result)
 
                 dice_total = sum(dice_results)
@@ -1494,7 +1019,7 @@ class ChimeraDice(commands.Cog):
                 return DiceRollResult(final_total, dice_results, modifier_value)
         
         # Fall back to normal d20 library for complex expressions or low debt
-        translated_expression = self._translate_dice_syntax(roll_string)
+        translated_expression = translate_dice_syntax(roll_string)
         return d20.roll(translated_expression)
     
     async def _roll_standard_dice_with_luck(self, ctx: commands.Context, roll_string: str):
@@ -1524,7 +1049,7 @@ class ChimeraDice(commands.Cog):
                 # Roll each die with luck bias
                 dice_results = []
                 for _ in range(num_dice):
-                    die_result = self._roll_weighted_standard_die(die_size, luck_debt)
+                    die_result = roll_weighted_standard_die(die_size, luck_debt)
                     dice_results.append(die_result)
 
                 dice_total = sum(dice_results)
@@ -1533,112 +1058,8 @@ class ChimeraDice(commands.Cog):
                 return DiceRollResult(final_total, dice_results, modifier_value)
         
         # Fall back to normal d20 library for complex expressions or neutral luck
-        translated_expression = self._translate_dice_syntax(roll_string)
+        translated_expression = translate_dice_syntax(roll_string)
         return d20.roll(translated_expression)
-    
-    # --- HELPER FUNCTIONS ---
-
-    def _parse_roll_and_label(self, roll_string: str) -> tuple:
-        """Parse roll string into dice expression and optional label.
-
-        Examples:
-        - "1d20+5" -> ("1d20+5", None)
-        - "1d20+5 perception" -> ("1d20+5", "perception")
-        - "2d6 fireball damage" -> ("2d6", "fireball damage")
-
-        Returns:
-            tuple: (dice_expression, label or None)
-        """
-        parts = roll_string.split(None, 1)  # Split on first whitespace
-        if len(parts) == 1:
-            return parts[0], None
-        return parts[0], parts[1]
-
-    def _translate_dice_syntax(self, expression: str) -> str:
-        """Translate user-friendly dice syntax to d20 library syntax.
-
-        Supports optional numbers (defaults to 1):
-        - "2d20dl" -> "2d20kh1" (drop lowest 1 = keep highest 1)
-        - "2d20dl1" -> "2d20kh1" (explicit drop lowest 1 = keep highest 1)
-        - "4d6dl" -> "4d6kh3" (drop lowest 1 from 4d6 = keep highest 3)
-        - "3d20dh" -> "3d20kl2" (drop highest 1 from 3d20 = keep lowest 2)
-        - "2d20kh" -> "2d20kh1" (keep highest 1)
-        - "2d20kl" -> "2d20kl1" (keep lowest 1)
-        """
-        import re
-
-        # Handle drop lowest (dl) -> convert to keep highest (kh)
-        # Match patterns like: 2d20dl, 2d20dl1, 4d6dl1+5, 3d8dl2-1
-        dl_pattern = r'(\d+)d(\d+)dl(\d*)'
-        def dl_to_kh(match):
-            num_dice = int(match.group(1))
-            die_size = match.group(2)
-            drop_count = int(match.group(3)) if match.group(3) else 1  # Default to 1
-            keep_count = num_dice - drop_count
-            if keep_count <= 0:
-                # Can't drop more dice than we have, fall back to original
-                return match.group(0)
-            return f"{num_dice}d{die_size}kh{keep_count}"
-
-        expression = re.sub(dl_pattern, dl_to_kh, expression)
-
-        # Handle drop highest (dh) -> convert to keep lowest (kl)
-        # Match patterns like: 3d20dh, 3d20dh1, 5d8dh2+3
-        dh_pattern = r'(\d+)d(\d+)dh(\d*)'
-        def dh_to_kl(match):
-            num_dice = int(match.group(1))
-            die_size = match.group(2)
-            drop_count = int(match.group(3)) if match.group(3) else 1  # Default to 1
-            keep_count = num_dice - drop_count
-            if keep_count <= 0:
-                # Can't drop more dice than we have, fall back to original
-                return match.group(0)
-            return f"{num_dice}d{die_size}kl{keep_count}"
-
-        expression = re.sub(dh_pattern, dh_to_kl, expression)
-
-        # Handle keep highest (kh) with optional number
-        # Match patterns like: 2d20kh, 2d20kh1, 4d6kh3+5
-        kh_pattern = r'(\d+)d(\d+)kh(\d*)'
-        def kh_explicit(match):
-            num_dice = match.group(1)
-            die_size = match.group(2)
-            keep_count = match.group(3) if match.group(3) else '1'  # Default to 1
-            return f"{num_dice}d{die_size}kh{keep_count}"
-
-        expression = re.sub(kh_pattern, kh_explicit, expression)
-
-        # Handle keep lowest (kl) with optional number
-        # Match patterns like: 2d20kl, 2d20kl1, 4d6kl2+3
-        kl_pattern = r'(\d+)d(\d+)kl(\d*)'
-        def kl_explicit(match):
-            num_dice = match.group(1)
-            die_size = match.group(2)
-            keep_count = match.group(3) if match.group(3) else '1'  # Default to 1
-            return f"{num_dice}d{die_size}kl{keep_count}"
-
-        expression = re.sub(kl_pattern, kl_explicit, expression)
-
-        return expression
-    
-    def _extract_base_dice(self, expression: str) -> str:
-        """Extract the base dice notation from a complex expression.
-        
-        Examples:
-        - "4d6kh3+2" -> "4d6"
-        - "1d20ro<3+5" -> "1d20"
-        - "2d10e10mi2" -> "2d10"
-        """
-        import re
-        
-        # Match basic dice pattern at the start
-        match = re.match(r'(\d+d\d+)', expression.lower())
-        if match:
-            return match.group(1)
-        
-        # Fallback to parsing dice modifiers for simple cases
-        dice_part, _ = self._parse_dice_modifiers(expression)
-        return dice_part
     
     async def _handle_test_queue_standard_dice(self, ctx: commands.Context, roll_string: str, queued_result: int, roll_type: str):
         """Handle queued test results for standard dice with advanced operations."""
@@ -1649,7 +1070,7 @@ class ChimeraDice(commands.Cog):
         
         if not has_advanced:
             # Simple case - just set the basic dice result
-            dice_part, modifier = self._parse_dice_modifiers(roll_string)
+            dice_part, modifier = parse_dice_modifiers(roll_string)
 
             actual_total = queued_result + modifier
             modifier_str = ""
@@ -1663,6 +1084,6 @@ class ChimeraDice(commands.Cog):
         else:
             # Complex case - we can't easily set the result with advanced operations
             # So we'll just roll normally and note it in the output
-            translated_expression = self._translate_dice_syntax(roll_string)
+            translated_expression = translate_dice_syntax(roll_string)
             result = d20.roll(translated_expression)
             return result

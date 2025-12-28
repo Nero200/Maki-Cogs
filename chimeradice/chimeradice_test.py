@@ -8,6 +8,9 @@ import re
 from datetime import datetime
 from redbot.core import commands
 
+# Import pure functions from core module
+from .chimeradice_core import normalize_dice_key, validate_dice_expression
+
 
 def setup_test_commands(cog):
     """Set up test command handler for the ChimeraDice cog.
@@ -52,7 +55,7 @@ def setup_test_commands(cog):
             return await ctx.send("You must specify at least one result value.")
 
         # Validate dice expression
-        is_valid, error_msg = cog._validate_dice_expression(dice_expr)
+        is_valid, error_msg = cog._validate_dice_expression_with_d20(dice_expr)
         if not is_valid:
             return await ctx.send(f"Invalid dice expression: {error_msg}")
 
@@ -112,7 +115,7 @@ def setup_test_commands(cog):
                 target_name = f"{found_user.display_name}'s"
 
         # Store queued test roll using normalized key
-        normalized_key = cog._normalize_dice_key(dice_expr)
+        normalized_key = normalize_dice_key(dice_expr)
 
         if user_id not in cog.test_queue:
             cog.test_queue[user_id] = {}
