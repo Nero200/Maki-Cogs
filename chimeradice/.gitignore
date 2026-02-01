@@ -1,6 +1,8 @@
 # Local test utilities - not for public repo
 chimeradice_test.py
 CLAUDE.md
+tests/
+run_tests.py
 
 # Backup files
 *.bak

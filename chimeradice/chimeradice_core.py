@@ -37,6 +37,11 @@ DEFAULT_GUILD = {
     "users": {},
 }
 
+DEFAULT_CHANNEL = {
+    "cpr_mode": False,
+    "initiative_group": {},  # {name: {"modifier_expr": "14+2", "modifier_total": 16}}
+}
+
 # Fallout damage dice faces
 FALLOUT_FACES = ["1", "2", "0", "0", "1E", "1E"]
 
@@ -639,3 +644,61 @@ def generate_realistic_fudge_faces(num_dice: int, target_sum: int) -> List[int]:
     random.shuffle(dice)
 
     return dice
+
+
+# --- CPR MODE FUNCTIONS ---
+
+def roll_cpr_d10() -> Tuple[int, int, Optional[int]]:
+    """Roll a d10 with CPR explosion/implosion rules.
+
+    Returns:
+        Tuple of (total, base_roll, explosion_roll)
+        - explosion_roll is positive for explosions (base=10)
+        - explosion_roll is negative for implosions (base=1)
+        - explosion_roll is None for normal rolls (2-9)
+    """
+    base_roll = random.randint(1, 10)
+
+    if base_roll == 10:
+        explosion = random.randint(1, 10)
+        return (base_roll + explosion, base_roll, explosion)
+    elif base_roll == 1:
+        implosion = random.randint(1, 10)
+        return (base_roll - implosion, base_roll, -implosion)
+    else:
+        return (base_roll, base_roll, None)
+
+
+def check_cpr_d6_critical(dice_results: List[int]) -> bool:
+    """Check if d6 pool roll is a critical (2+ sixes).
+
+    Args:
+        dice_results: List of individual d6 results
+
+    Returns:
+        True if 2 or more dice show 6
+    """
+    return dice_results.count(6) >= 2
+
+
+def format_cpr_d10_result(total: int, base_roll: int, explosion_roll: Optional[int], modifier: int) -> str:
+    """Format CPR d10 result for display.
+
+    Args:
+        total: Final total including modifier
+        base_roll: The initial d10 result (1-10)
+        explosion_roll: Positive for explosion, negative for implosion, None for normal
+        modifier: The modifier applied to the roll
+
+    Returns:
+        Formatted string for the dice portion of the result
+    """
+    if explosion_roll is None:
+        return f"({base_roll})"
+    elif explosion_roll > 0:
+        return f"(10->10!+{explosion_roll})"
+    else:
+        implosion_value = abs(explosion_roll)
+        luck_total = 1 + modifier
+        luck_breakdown = f"1+{modifier}" if modifier >= 0 else f"1{modifier}"
+        return f"(1->1!-{implosion_value}) [Luck? **{luck_total}** ({luck_breakdown})]"
