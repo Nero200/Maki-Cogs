@@ -13,6 +13,7 @@ from .chimeradice_core import (
     # Constants
     DEFAULT_GUILD_USER,
     DEFAULT_GUILD,
+    DEFAULT_CHANNEL,
     FALLOUT_FACES,
     FUDGE_FACES,
     FUDGE_PROBABILITIES,
@@ -37,6 +38,10 @@ from .chimeradice_core import (
     roll_weighted_fudge_dice,
     generate_fudge_dice_for_sum,
     generate_realistic_fudge_faces,
+    # CPR mode functions
+    roll_cpr_d10,
+    format_cpr_d10_result,
+    check_cpr_d6_critical,
 )
 
 log = logging.getLogger("red.chimeradice")
@@ -60,6 +65,7 @@ class ChimeraDice(commands.Cog):
         )
         self.config.register_guild(**DEFAULT_GUILD)
         self.config.register_user(**DEFAULT_GUILD_USER)
+        self.config.register_channel(**DEFAULT_CHANNEL)
         # Test queue for validating luck/karma probability systems.
         # Used by test utilities to run deterministic sequences for system validation.
         self.test_queue = {}
@@ -149,6 +155,20 @@ class ChimeraDice(commands.Cog):
                 await self._handle_fallout_dice(ctx, dice_expr, roll_type, queued_result, label)
                 return
 
+            # Check for CPR mode
+            cpr_enabled = await self.config.channel(ctx.channel).cpr_mode()
+            if cpr_enabled:
+                # Check if this is a simple d10 roll
+                if self._is_simple_d10_roll(dice_expr):
+                    await self._handle_cpr_d10_roll(ctx, dice_expr, label)
+                    return
+
+                # Check if this is a d6 pool roll
+                is_d6_pool, num_dice = self._is_simple_d6_pool(dice_expr)
+                if is_d6_pool:
+                    await self._handle_cpr_d6_roll(ctx, dice_expr, num_dice, label)
+                    return
+
             # Use d20 library for standard dice with full support for advanced operations
             if queued_result is not None:
                 # For queued results with advanced operations, we need special handling
@@ -200,6 +220,111 @@ class ChimeraDice(commands.Cog):
         except Exception as e:
             log.error(f"Roll execution failed for user {ctx.author} ({ctx.author.id}): roll_string='{roll_string}', roll_type='{roll_type}'", exc_info=True)
             await ctx.send(f"Error: {str(e)}")
+
+    def _is_simple_d10_roll(self, dice_expr: str) -> bool:
+        """Check if expression is a simple 1d10+X roll for CPR mode."""
+        pattern = r'^1?d10([+-]\d+)*$'
+        return bool(re.match(pattern, dice_expr.lower().replace(' ', '')))
+
+    def _is_simple_d6_pool(self, dice_expr: str) -> Tuple[bool, int]:
+        """Check if expression is a simple Nd6+X roll for CPR mode (2+ dice).
+
+        Returns:
+            Tuple of (is_d6_pool, num_dice)
+        """
+        pattern = r'^(\d+)d6([+-]\d+)*$'
+        match = re.match(pattern, dice_expr.lower().replace(' ', ''))
+        if match:
+            num_dice = int(match.group(1))
+            if num_dice >= 2:
+                return (True, num_dice)
+        return (False, 0)
+
+    def _format_modifier_display(self, modifier: int) -> str:
+        """Format a modifier for display in roll output."""
+        if modifier > 0:
+            return f" + {modifier}"
+        elif modifier < 0:
+            return f" - {abs(modifier)}"
+        return ""
+
+    async def _handle_cpr_d10_roll(self, ctx: commands.Context, dice_expr: str, label: Optional[str]):
+        """Handle a d10 roll with CPR explosion/implosion."""
+        # Parse modifier using safe parser
+        _, modifier = parse_dice_modifiers(dice_expr)
+
+        # Roll with CPR rules
+        dice_total, base_roll, explosion_roll = roll_cpr_d10()
+        final_total = dice_total + modifier
+
+        # Build modifier display string
+        modifier_display = self._format_modifier_display(modifier)
+
+        # Format output
+        emoji = self._get_roll_emoji("standard")
+        roll_display = f"`{dice_expr}`" if label is None else f"`{dice_expr}` ({label})"
+
+        # Build result string based on roll type
+        if explosion_roll is not None and explosion_roll < 0:
+            # Implosion
+            implosion_value = abs(explosion_roll)
+            luck_total = 1 + modifier
+            luck_breakdown = f"1+{modifier}" if modifier >= 0 else f"1{modifier}"
+            result_str = f"1d10 (1->1!-{implosion_value}){modifier_display} = {final_total}"
+            output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
+            output += f"Result: {result_str} = **{final_total}** [Luck? **{luck_total}** ({luck_breakdown})]"
+        elif explosion_roll is not None:
+            # Explosion
+            result_str = f"1d10 (10->10!+{explosion_roll}){modifier_display} = {final_total}"
+            output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
+            output += f"Result: {result_str} = **{final_total}**"
+        else:
+            # Normal roll
+            result_str = f"1d10 ({base_roll}){modifier_display} = {final_total}"
+            output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
+            output += f"Result: {result_str} = **{final_total}**"
+
+        await ctx.send(output)
+
+    async def _handle_cpr_d6_roll(self, ctx: commands.Context, dice_expr: str, num_dice: int, label: Optional[str]):
+        """Handle a d6 pool roll with CPR critical damage."""
+        # Parse modifier using safe parser
+        _, modifier = parse_dice_modifiers(dice_expr)
+
+        # Roll the dice
+        dice_results = [random.randint(1, 6) for _ in range(num_dice)]
+        dice_total = sum(dice_results)
+
+        # Check for critical
+        is_critical = check_cpr_d6_critical(dice_results)
+        crit_bonus = 5 if is_critical else 0
+        final_total = dice_total + modifier + crit_bonus
+
+        # Format dice display (bold the 6s)
+        dice_display_parts = []
+        for d in dice_results:
+            if d == 6:
+                dice_display_parts.append(f"**{d}**")
+            else:
+                dice_display_parts.append(str(d))
+        dice_display = ", ".join(dice_display_parts)
+
+        # Build modifier display
+        modifier_display = self._format_modifier_display(modifier)
+
+        # Format output
+        emoji = self._get_roll_emoji("standard")
+        roll_display = f"`{dice_expr}`" if label is None else f"`{dice_expr}` ({label})"
+
+        base_total = dice_total + modifier
+        if is_critical:
+            output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
+            output += f"Result: {num_dice}d6 ({dice_display}){modifier_display} = {base_total} **+5** = **{final_total}** [Critical Damage]"
+        else:
+            output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
+            output += f"Result: {num_dice}d6 ({dice_display}){modifier_display} = {base_total} = **{final_total}**"
+
+        await ctx.send(output)
 
     @commands.command(name="force")
     async def force_fake(self, ctx: commands.Context, *, args: str = ""):
@@ -292,8 +417,194 @@ class ChimeraDice(commands.Cog):
         ]
         await ctx.send(random.choice(responses))
 
+    # --- CPR MODE COMMANDS ---
+
+    @commands.group(name="cpr", invoke_without_command=True)
+    async def cpr(self, ctx: commands.Context):
+        """Cyberpunk Red dice mode commands."""
+        await ctx.send_help(ctx.command)
+
+    @cpr.command(name="enable", aliases=["on"])
+    @commands.admin_or_permissions(manage_guild=True)
+    async def cpr_enable(self, ctx: commands.Context):
+        """Enable CPR mode for this channel."""
+        await self.config.channel(ctx.channel).cpr_mode.set(True)
+        await ctx.send("Chippin' CPR module. Iron hot.")
+
+    @cpr.command(name="disable", aliases=["off"])
+    @commands.admin_or_permissions(manage_guild=True)
+    async def cpr_disable(self, ctx: commands.Context):
+        """Disable CPR mode for this channel."""
+        await self.config.channel(ctx.channel).cpr_mode.set(False)
+        await ctx.send("CPR mode disabled for this channel.")
+
+    @cpr.command(name="status")
+    async def cpr_status(self, ctx: commands.Context):
+        """Show CPR mode status for this channel."""
+        enabled = await self.config.channel(ctx.channel).cpr_mode()
+        status = "enabled" if enabled else "disabled"
+        await ctx.send(f"CPR mode is **{status}** for this channel.")
+
+    # --- INITIATIVE COMMANDS ---
+
+    @commands.group(name="init", invoke_without_command=True)
+    async def init(self, ctx: commands.Context):
+        """Initiative tracking commands for Cyberpunk Red."""
+        await ctx.send_help(ctx.command)
+
+    @init.command(name="add")
+    async def init_add(self, ctx: commands.Context, name: str, *, modifier: str):
+        """Add a character to initiative.
+
+        Examples:
+            >init add Darius 14+2
+            >init add "Goon #1" +8
+            >init add Sasha -2
+        """
+        # Parse and validate the modifier expression
+        modifier_expr = modifier.strip()
+
+        # Strip leading + for display (but keep leading -)
+        display_expr = modifier_expr.lstrip('+')
+
+        # Evaluate the modifier safely
+        try:
+            # Safe evaluation - only allow digits, +, -, and spaces
+            clean_expr = modifier_expr.replace(' ', '')
+            if not re.match(r'^[+-]?\d+([+-]\d+)*$', clean_expr):
+                await ctx.send("Invalid modifier. Use numbers and +/- operators (e.g., `14+2`, `-3`).")
+                return
+            # Safe to evaluate since regex validated
+            modifier_total = eval(clean_expr)
+        except Exception:
+            await ctx.send("Invalid modifier. Use numbers and +/- operators (e.g., `14+2`, `-3`).")
+            return
+
+        # Get current initiative group
+        init_group = await self.config.channel(ctx.channel).initiative_group()
+
+        # Check if updating existing (case-insensitive)
+        name_key = name.lower()
+        is_update = any(k.lower() == name_key for k in init_group.keys())
+
+        # Remove old entry if exists (case-insensitive)
+        init_group = {k: v for k, v in init_group.items() if k.lower() != name_key}
+
+        # Add new entry
+        init_group[name] = {
+            "modifier_expr": display_expr,
+            "modifier_total": modifier_total
+        }
+
+        await self.config.channel(ctx.channel).initiative_group.set(init_group)
+
+        action = "updated" if is_update else "added"
+        await ctx.send(f"**{name}** {action} to initiative with modifier {display_expr} (total: {modifier_total:+d}).")
+
+    @init.command(name="remove")
+    async def init_remove(self, ctx: commands.Context, *, name: str):
+        """Remove a character from initiative."""
+        init_group = await self.config.channel(ctx.channel).initiative_group()
+
+        # Find case-insensitive match
+        name_key = name.lower()
+        matched_name = None
+        for existing_name in init_group.keys():
+            if existing_name.lower() == name_key:
+                matched_name = existing_name
+                break
+
+        if matched_name is None:
+            await ctx.send(f"Character **{name}** not found in initiative.")
+            return
+
+        del init_group[matched_name]
+        await self.config.channel(ctx.channel).initiative_group.set(init_group)
+        await ctx.send(f"**{matched_name}** removed from initiative.")
+
+    @init.command(name="clear")
+    async def init_clear(self, ctx: commands.Context):
+        """Clear all characters from initiative."""
+        await self.config.channel(ctx.channel).initiative_group.set({})
+        await ctx.send("Initiative group cleared.")
+
+    @init.command(name="list")
+    async def init_list(self, ctx: commands.Context):
+        """Show current initiative group (without rolling)."""
+        init_group = await self.config.channel(ctx.channel).initiative_group()
+
+        if not init_group:
+            await ctx.send("No characters in initiative. Use `>init add NAME MOD` to add some.")
+            return
+
+        lines = ["**Initiative Group:**"]
+        for name, data in sorted(init_group.items(), key=lambda x: x[1]["modifier_total"], reverse=True):
+            lines.append(f"- {name} ({data['modifier_expr']})")
+
+        await ctx.send("\n".join(lines))
+
+    @init.command(name="roll")
+    async def init_roll(self, ctx: commands.Context):
+        """Roll initiative for all characters."""
+        init_group = await self.config.channel(ctx.channel).initiative_group()
+
+        if not init_group:
+            await ctx.send("No characters in initiative. Use `>init add NAME MOD` to add some.")
+            return
+
+        # Roll for each character
+        results = []
+        for name, data in init_group.items():
+            modifier_total = data["modifier_total"]
+            modifier_expr = data["modifier_expr"]
+
+            # Roll d10 with explosion on 10
+            base_roll = random.randint(1, 10)
+            explosion = None
+
+            if base_roll == 10:
+                explosion = random.randint(1, 10)
+                dice_total = base_roll + explosion
+                dice_display = f"1d10->10!+{explosion}"
+            else:
+                dice_total = base_roll
+                dice_display = f"1d10->{base_roll}"
+
+            final_total = dice_total + modifier_total
+
+            # Format the breakdown
+            if base_roll == 10:
+                # Explosion: show space before modifier
+                if modifier_expr.startswith('-'):
+                    breakdown = f"({dice_display} {modifier_expr})"
+                else:
+                    breakdown = f"({dice_display} +{modifier_expr})"
+            else:
+                # Non-explosion: compact format, no space
+                if modifier_expr.startswith('-'):
+                    breakdown = f"({dice_display}{modifier_expr})"
+                else:
+                    breakdown = f"({dice_display}+{modifier_expr})"
+
+            results.append({
+                "name": name,
+                "total": final_total,
+                "modifier": modifier_total,
+                "breakdown": breakdown
+            })
+
+        # Sort by total (highest), then modifier (highest), then name (alphabetical)
+        results.sort(key=lambda x: (-x["total"], -x["modifier"], x["name"].lower()))
+
+        # Format output
+        lines = ["**Initiative Order**"]
+        for i, result in enumerate(results, 1):
+            lines.append(f"{i}. {result['name']} [**{result['total']}**] {result['breakdown']}")
+
+        await ctx.send("\n".join(lines))
+
     # --- ADMIN COMMANDS ---
-    
+
     @commands.command(name="enable_luck")
     @commands.has_permissions(administrator=True)
     async def enable_luck(self, ctx: commands.Context, user: discord.Member):
