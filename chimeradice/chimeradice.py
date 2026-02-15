@@ -42,9 +42,54 @@ from .chimeradice_core import (
     roll_cpr_d10,
     format_cpr_d10_result,
     check_cpr_d6_critical,
+    # CPR critical injury tables
+    lookup_cpr_critical_injury,
 )
 
 log = logging.getLogger("red.chimeradice")
+
+
+class CriticalInjuryView(discord.ui.View):
+    """Discord buttons for rolling on CPR critical injury tables."""
+
+    def __init__(self, roller_name: str, timeout: float = 120.0):
+        super().__init__(timeout=timeout)
+        self.roller_name = roller_name
+        self.message: Optional[discord.Message] = None
+
+    @discord.ui.button(label="Body", style=discord.ButtonStyle.danger)
+    async def body_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._roll_injury(interaction, "body")
+
+    @discord.ui.button(label="Head", style=discord.ButtonStyle.primary)
+    async def head_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self._roll_injury(interaction, "head")
+
+    async def _roll_injury(self, interaction: discord.Interaction, location: str):
+        die1 = random.randint(1, 6)
+        die2 = random.randint(1, 6)
+        total = die1 + die2
+        injury = lookup_cpr_critical_injury(location, total)
+
+        loc_label = location.capitalize()
+        output = (
+            f"**Critical Injury ({loc_label})** - 2d6 ({die1}, {die2}) = **{total}**\n"
+            f"**{injury['name']}**\n"
+            f"> {injury['effect']}\n"
+            f"> **Quick Fix:** {injury['quick_fix']}\n"
+            f"> **Treatment:** {injury['treatment']}"
+        )
+
+        await interaction.response.send_message(output)
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except (discord.NotFound, discord.HTTPException):
+                pass
 
 
 class ChimeraDice(commands.Cog):
@@ -320,11 +365,13 @@ class ChimeraDice(commands.Cog):
         if is_critical:
             output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
             output += f"Result: {num_dice}d6 ({dice_display}){modifier_display} = {base_total} **+5** = **{final_total}** [Critical Damage]"
+            view = CriticalInjuryView(roller_name=ctx.author.display_name)
+            msg = await ctx.send(output, view=view)
+            view.message = msg
         else:
             output = f"{emoji} **{ctx.author.display_name}** rolls {roll_display}...\n"
             output += f"Result: {num_dice}d6 ({dice_display}){modifier_display} = {base_total} = **{final_total}**"
-
-        await ctx.send(output)
+            await ctx.send(output)
 
     @commands.command(name="force")
     async def force_fake(self, ctx: commands.Context, *, args: str = ""):

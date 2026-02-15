@@ -702,3 +702,158 @@ def format_cpr_d10_result(total: int, base_roll: int, explosion_roll: Optional[i
         luck_total = 1 + modifier
         luck_breakdown = f"1+{modifier}" if modifier >= 0 else f"1{modifier}"
         return f"(1->1!-{implosion_value}) [Luck? **{luck_total}** ({luck_breakdown})]"
+
+
+# --- CPR CRITICAL INJURY TABLES ---
+
+CPR_CRITICAL_BODY = {
+    2: {
+        "name": "Dismembered Arm",
+        "effect": "The Dismembered Arm is gone. You drop any items in that dismembered arm's hand immediately. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+    3: {
+        "name": "Dismembered Hand",
+        "effect": "The Dismembered Hand is gone. You drop any items in the dismembered hand immediately. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+    4: {
+        "name": "Collapsed Lung",
+        "effect": "-2 to MOVE (minimum 1). Base Death Save Penalty is increased by 1.",
+        "quick_fix": "Paramedic DV15",
+        "treatment": "Surgery DV15",
+    },
+    5: {
+        "name": "Broken Ribs",
+        "effect": "At the end of every Turn where you move further than 4m/yds on foot, you re-suffer this Critical Injury's Bonus Damage directly to your Hit Points.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Paramedic DV15 or Surgery DV13",
+    },
+    6: {
+        "name": "Broken Arm",
+        "effect": "The Broken Arm cannot be used. You drop any items in that arm's hand immediately.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Paramedic DV15 or Surgery DV13",
+    },
+    7: {
+        "name": "Foreign Object",
+        "effect": "At the end of every Turn where you move further than 4m/yds on foot, you re-suffer this Critical Injury's Bonus Damage directly to your Hit Points.",
+        "quick_fix": "First Aid or Paramedic DV13",
+        "treatment": "Quick Fix removes Injury Effect permanently",
+    },
+    8: {
+        "name": "Broken Leg",
+        "effect": "-4 to MOVE (minimum 1).",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Paramedic DV15 or Surgery DV13",
+    },
+    9: {
+        "name": "Torn Muscle",
+        "effect": "-2 to Melee Attacks.",
+        "quick_fix": "First Aid or Paramedic DV13",
+        "treatment": "Quick Fix removes Injury Effect permanently",
+    },
+    10: {
+        "name": "Spinal Injury",
+        "effect": "Next Turn, you cannot take an Action, but you can still take a Move Action. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "Paramedic DV15",
+        "treatment": "Surgery DV15",
+    },
+    11: {
+        "name": "Crushed Fingers",
+        "effect": "-4 to all Actions involving that hand.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Surgery DV15",
+    },
+    12: {
+        "name": "Dismembered Leg",
+        "effect": "The Dismembered Leg is gone. -6 to MOVE (minimum 1). You cannot dodge attacks. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+}
+
+CPR_CRITICAL_HEAD = {
+    2: {
+        "name": "Lost Eye",
+        "effect": "The Lost Eye is gone. -4 to Ranged Attacks & Perception Checks involving vision. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+    3: {
+        "name": "Brain Injury",
+        "effect": "-2 to all Actions. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+    4: {
+        "name": "Damaged Eye",
+        "effect": "-2 to Ranged Attacks & Perception Checks involving vision.",
+        "quick_fix": "Paramedic DV15",
+        "treatment": "Surgery DV13",
+    },
+    5: {
+        "name": "Concussion",
+        "effect": "-2 to all Actions.",
+        "quick_fix": "First Aid or Paramedic DV13",
+        "treatment": "Quick Fix removes Injury Effect permanently",
+    },
+    6: {
+        "name": "Broken Jaw",
+        "effect": "-4 to all Actions involving speech.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Paramedic or Surgery DV13",
+    },
+    7: {
+        "name": "Foreign Object",
+        "effect": "At the end of every Turn where you move further than 4m/yds on foot, you re-suffer this Critical Injury's Bonus Damage directly to your Hit Points.",
+        "quick_fix": "First Aid or Paramedic DV13",
+        "treatment": "Quick Fix removes Injury Effect permanently",
+    },
+    8: {
+        "name": "Whiplash",
+        "effect": "Base Death Save Penalty is increased by 1.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Paramedic or Surgery DV13",
+    },
+    9: {
+        "name": "Cracked Skull",
+        "effect": "Aimed Shots to your head multiply the damage that gets through your SP by 3 instead of 2. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "Paramedic DV15",
+        "treatment": "Paramedic or Surgery DV15",
+    },
+    10: {
+        "name": "Damaged Ear",
+        "effect": "Whenever you move further than 4m/yds on foot in a Turn, you cannot take a Move Action on your next Turn. Additionally you take a -2 to Perception Checks involving hearing.",
+        "quick_fix": "Paramedic DV13",
+        "treatment": "Surgery DV13",
+    },
+    11: {
+        "name": "Crushed Windpipe",
+        "effect": "You cannot speak. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV15",
+    },
+    12: {
+        "name": "Lost Ear",
+        "effect": "The Lost Ear is gone. Whenever you move further than 4m/yds on foot in a Turn, you cannot take a Move Action on your next Turn. Additionally you take a -4 to Perception Checks involving hearing. Base Death Save Penalty is increased by 1.",
+        "quick_fix": "N/A",
+        "treatment": "Surgery DV17",
+    },
+}
+
+
+def lookup_cpr_critical_injury(location: str, roll: int) -> Optional[Dict]:
+    """Look up a CPR critical injury by location and 2d6 roll.
+
+    Args:
+        location: "body" or "head"
+        roll: 2d6 result (2-12)
+
+    Returns:
+        Dict with name, effect, quick_fix, treatment or None if invalid
+    """
+    table = CPR_CRITICAL_BODY if location == "body" else CPR_CRITICAL_HEAD
+    return table.get(roll)
