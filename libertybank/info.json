@@ -1,0 +1,18 @@
+{
+    "author": ["Nero"],
+    "install_msg": "LibertyBank installed. Use [p]eddies to get started.",
+    "name": "LibertyBank",
+    "short": "TTRPG party fund and character money management.",
+    "description": "A purpose-built banking cog for tabletop RPGs. Manage individual character funds, a shared party treasury, and view a full transaction ledger. Designed for Cyberpunk Red but works for any game.",
+    "tags": [
+        "rpg",
+        "ttrpg",
+        "cyberpunk",
+        "economy",
+        "bank",
+        "party",
+        "fund"
+    ],
+    "requirements": [],
+    "end_user_data_statement": "This cog stores user IDs, display names, account balances, and transaction history on a per-server basis."
+}
