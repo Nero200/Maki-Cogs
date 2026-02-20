@@ -54,7 +54,10 @@ class AmountMemoModal(discord.ui.Modal):
                 self.guild, self.user.id, str(self.user.id), value, new_bal, memo, "deposit",
             )
             await interaction.response.send_message(
-                f"Deposited **{humanize_number(value)}** {currency}. New balance: **{humanize_number(new_bal)}** {currency}.",
+                f"{self.user.mention} deposited **{humanize_number(value)}** {currency}.",
+            )
+            await interaction.followup.send(
+                f"New balance: **{humanize_number(new_bal)}** {currency}.",
                 ephemeral=True,
             )
 
@@ -70,7 +73,10 @@ class AmountMemoModal(discord.ui.Modal):
                 self.guild, self.user.id, str(self.user.id), -value, new_bal, memo, "withdraw",
             )
             await interaction.response.send_message(
-                f"Withdrew **{humanize_number(value)}** {currency}. New balance: **{humanize_number(new_bal)}** {currency}.",
+                f"{self.user.mention} withdrew **{humanize_number(value)}** {currency}.",
+            )
+            await interaction.followup.send(
+                f"New balance: **{humanize_number(new_bal)}** {currency}.",
                 ephemeral=True,
             )
 
@@ -512,7 +518,10 @@ class LibertyBank(commands.Cog):
         if balance is None:
             await ctx.send(f"{target.display_name} doesn't have an account yet.")
             return
-        await ctx.send(f"**{target.display_name}**: {humanize_number(balance)} {currency}")
+        try:
+            await ctx.author.send(f"**{target.display_name}**: {humanize_number(balance)} {currency}")
+        except discord.Forbidden:
+            await ctx.send("I couldn't DM you. Please enable DMs from server members.")
 
     @eddies.command(name="party")
     async def eddies_party(self, ctx: commands.Context):
@@ -536,7 +545,7 @@ class LibertyBank(commands.Cog):
             ctx.guild, ctx.author.id, str(ctx.author.id),
             amount, new_bal, memo, "deposit",
         )
-        await ctx.send(f"Deposited **{humanize_number(amount)}** {currency}.")
+        await ctx.send(f"**{ctx.author.display_name}** deposited **{humanize_number(amount)}** {currency}.")
         try:
             await ctx.author.send(f"New balance: **{humanize_number(new_bal)}** {currency}.")
         except discord.Forbidden:
@@ -561,7 +570,7 @@ class LibertyBank(commands.Cog):
             ctx.guild, ctx.author.id, str(ctx.author.id),
             -amount, new_bal, memo, "withdraw",
         )
-        await ctx.send(f"Withdrew **{humanize_number(amount)}** {currency}.")
+        await ctx.send(f"**{ctx.author.display_name}** withdrew **{humanize_number(amount)}** {currency}.")
         try:
             await ctx.author.send(f"New balance: **{humanize_number(new_bal)}** {currency}.")
         except discord.Forbidden:
